@@ -1,0 +1,7 @@
+product_id,product_name,category,price,currency,stock_quantity
+101,Notebook,Stationery,120.50,GBP,25
+102,Desk Lamp,Home,200.00,GBP,12
+103,Wireless Mouse,Electronics,99.99,USD,30
+104,Planner,Stationery,50.00,GBP,18
+105,Monitor,Electronics,300.00,EUR,7
+106,USB Cable,Electronics,19.99,GBP,65

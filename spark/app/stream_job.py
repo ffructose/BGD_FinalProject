@@ -1,13 +1,39 @@
 from pyspark.sql import SparkSession, functions as F
 from pyspark.sql.types import (StructType, StructField,IntegerType, StringType)
+import os
 
-# 1) Create Spark session
-spark = (
-    SparkSession.builder
-    .appName("KafkaToSparkStreaming")
-    .getOrCreate()
-)
+S3_ENDPOINT = os.getenv("S3_ENDPOINT")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
+BUCKET = os.getenv("S3_BUCKET", "lake")
+SILVER = os.getenv("S3_SILVER_PREFIX", "silver")
+
+
+def s3url(path):
+    return f"s3a://{BUCKET}/{path}"
+
+
+def build_spark():
+    # 1) Create Spark session
+    spark = (
+        SparkSession.builder
+        .appName("KafkaToSparkStreaming")
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+        .getOrCreate()
+    )
+
+    conf = spark._jsc.hadoopConfiguration()
+    conf.set("fs.s3a.endpoint", S3_ENDPOINT)
+    conf.set("fs.s3a.access.key", AWS_ACCESS_KEY_ID)
+    conf.set("fs.s3a.secret.key", AWS_SECRET_ACCESS_KEY)
+    conf.set("fs.s3a.path.style.access", "true")
+    conf.set("fs.s3a.connection.ssl.enabled", "false")
+
+    return spark
+
+spark = build_spark()
 spark.sparkContext.setLogLevel("WARN")
 
 
@@ -77,5 +103,16 @@ query_console = (
 )
 
 
+# Writing Spark DataFrames in Delta format
+query_delta = (
+    df_parsed.writeStream
+    .format("delta")
+    .outputMode("append")
+    .option("path", s3url(f"{SILVER}/orders"))
+    .option("checkpointLocation", "/opt/spark/output/checkpoints/orders_to_delta")
+    .trigger(processingTime="5 seconds")
+    .start()
+)
+
 # 6) Wait for termination (until container is stopped)
-query_console.awaitTermination()
+spark.streams.awaitAnyTermination()

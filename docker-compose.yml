@@ -127,9 +127,23 @@ services:
     depends_on:
       - spark-master
 
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
   spark-app:
     image: spark:3.5.1-python3
     container_name: spark-app
+    user: "0"
     depends_on:
       kafka:
         condition: service_healthy
@@ -137,13 +151,24 @@ services:
         condition: service_started
       spark-worker:
         condition: service_started
+      minio:
+        condition: service_started
+    environment:
+      S3_ENDPOINT: ${MINIO_ENDPOINT}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_SILVER_PREFIX: ${S3_SILVER_PREFIX}
     volumes:
       - ./spark/app:/opt/spark-app:ro
+      - spark_output:/opt/spark/output
     command:
       - bash
       - -lc
-      - "exec /opt/spark/bin/spark-submit --master spark://spark-master:7077 --conf spark.driver.host=spark-app --conf spark.driver.bindAddress=0.0.0.0 --conf spark.jars.ivy=/tmp/.ivy2 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 /opt/spark-app/stream_job.py"
+      - "exec /opt/spark/bin/spark-submit --master spark://spark-master:7077 --conf spark.driver.host=spark-app --conf spark.driver.bindAddress=0.0.0.0 --conf spark.jars.ivy=/tmp/.ivy2 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,io.delta:delta-spark_2.12:3.2.0,org.apache.hadoop:hadoop-aws:3.3.4 /opt/spark-app/stream_job.py"
 
 volumes:
   kafka_data:
   pg_data:
+  minio_data:
+  spark_output:

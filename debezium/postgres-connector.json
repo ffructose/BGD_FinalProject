@@ -1,0 +1,21 @@
+{
+  "name": "online-shop-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "shop",
+    "database.password": "shop123",
+    "database.dbname": "shopdb",
+    "topic.prefix": "shop",
+    "publication.autocreate.mode": "filtered",
+    "slot.name": "shop_slot",
+    "schema.include.list": "public",
+    "table.include.list": "public.customers,public.products,public.orders",
+    "tombstones.on.delete": "false",
+    "decimal.handling.mode": "string",
+    "time.precision.mode": "adaptive_time_microseconds",
+    "plugin.name": "pgoutput"
+  }
+}

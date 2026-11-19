@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Online shop change event",
+  "type": "object",
+  "oneOf": [
+    {
+      "required": ["payload"],
+      "properties": {
+        "payload": { "$ref": "#/definitions/event" }
+      }
+    },
+    { "$ref": "#/definitions/event" }
+  ],
+  "definitions": {
+    "event": {
+      "type": "object",
+      "required": ["op"],
+      "properties": {
+        "before": { "type": ["object", "null"] },
+        "after": { "type": ["object", "null"] },
+        "op": { "enum": ["r", "c", "u", "d"] },
+        "source": { "type": "object" }
+      }
+    }
+  }
+}

@@ -101,6 +101,49 @@ services:
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "PLAINTEXT://kafka:29092"
       SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: "1"
 
+  spark-master:
+    image: spark:3.5.1-python3
+    container_name: spark-master
+    ports:
+      - "7077:7077"
+      - "8084:8080"
+    command: >
+      bash -lc "/opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+      --host spark-master --port 7077 --webui-port 8080"
+    depends_on:
+      - kafka
+
+  spark-worker:
+    image: spark:3.5.1-python3
+    container_name: spark-worker
+    ports:
+      - "8085:8081"
+    environment:
+      SPARK_WORKER_CORES: "2"
+      SPARK_WORKER_MEMORY: "2g"
+    command: >
+      bash -lc "/opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077 --webui-port 8081"
+    depends_on:
+      - spark-master
+
+  spark-app:
+    image: spark:3.5.1-python3
+    container_name: spark-app
+    depends_on:
+      kafka:
+        condition: service_healthy
+      spark-master:
+        condition: service_started
+      spark-worker:
+        condition: service_started
+    volumes:
+      - ./spark/app:/opt/spark-app:ro
+    command:
+      - bash
+      - -lc
+      - "exec /opt/spark/bin/spark-submit --master spark://spark-master:7077 --conf spark.driver.host=spark-app --conf spark.driver.bindAddress=0.0.0.0 --conf spark.jars.ivy=/tmp/.ivy2 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 /opt/spark-app/stream_job.py"
+
 volumes:
   kafka_data:
   pg_data:

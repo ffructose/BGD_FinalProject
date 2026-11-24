@@ -24,7 +24,7 @@ def column_type(name, rows):
 
 def main():
     conn = psycopg2.connect(
-        host="localhost",
+        host=os.getenv("POSTGRES_HOST", "localhost"),
         port=5432,
         user="shop",
         password="shop123",

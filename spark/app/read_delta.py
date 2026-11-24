@@ -34,6 +34,7 @@ def build_spark():
 
 def main():
     spark = build_spark()
+    spark.sparkContext.setLogLevel("ERROR")
 
     orders = spark.read.format("delta").load(s3url(f"{SILVER}/orders"))
     orders.show(truncate=False)
